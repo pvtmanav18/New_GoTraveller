@@ -3,6 +3,7 @@ import operator
 import os
 import json
 import psycopg
+from datetime import datetime
 from dotenv import load_dotenv
 
 from langgraph.graph import StateGraph, START, END
@@ -71,11 +72,24 @@ class TravelState(TypedDict):
 # --------------------------------------------------
 
 def hotel_agent(state: TravelState):
-    query = f"""
-        Best hotels in {state['place']}
-        Budget: {state['budget']}
-        Preferences: {state['preferences']}
-        """
+    # Calculate duration of trip in nights
+    try:
+        d1 = datetime.strptime(state['start_date'], "%Y-%m-%d")
+        d2 = datetime.strptime(state['end_date'], "%Y-%m-%d")
+        nights = max(1, (d2 - d1).days)
+    except Exception:
+        nights = 5
+        
+    try:
+        num_budget = int("".join([c for c in str(state['budget']) if c.isdigit()]))
+    except ValueError:
+        num_budget = 50000
+
+    # Budget approximately 75% for lodging
+    nightly_limit = int((num_budget * 0.75) / nights)
+
+    query = f"affordable hotels in {state['place']} under ₹{nightly_limit} INR per night - {state['preferences']}"
+    print(f"🔎 LangGraph Hotel Agent querying Tavily: {query}")
     hotel_results = tavily_search(query)
 
     return {
@@ -83,7 +97,6 @@ def hotel_agent(state: TravelState):
     "messages": [
         AIMessage(content="Hotel information collected.")
     ],
-    # # "llm_calls": state.get("llm_calls", 0) + 1,
     }
 
 # --------------------------------------------------

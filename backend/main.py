@@ -78,7 +78,9 @@ async def plan_trip(data: TripRequest):
         hotels = booking_agent.get_hotel_options(
             destination=data.place,
             budget=str(data.budget),
-            preferences=", ".join(data.preferences)
+            preferences=", ".join(data.preferences),
+            start_date=data.start_date,
+            end_date=data.end_date
         )
     except Exception as e:
         print(f"Error fetching hotels in route: {e}")

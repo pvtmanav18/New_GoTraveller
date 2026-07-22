@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import LiveTripNavigation from "./live-view";
-import { Sparkles, Calendar, DollarSign, Users, Compass, AlertCircle, Check, Star } from "lucide-react";
+import { Sparkles, Calendar, DollarSign, Users, Compass, AlertCircle, Check, Star, IndianRupee } from "lucide-react";
 
 export default function PlannerView() {
   // State variables for inputs
@@ -11,7 +11,7 @@ export default function PlannerView() {
   const [bookingStatus, setBookingStatus] = useState<{[key: string]: 'idle' | 'booking' | 'booked'}>({});
   const [startDate, setStartDate] = useState("2026-10-15");
   const [endDate, setEndDate] = useState("2026-10-22");
-  const [budget, setBudget] = useState(3500);
+  const [budget, setBudget] = useState(50000);
   const [travelers, setTravelers] = useState(2);
   const [selectedPrefs, setSelectedPrefs] = useState<string[]>([
     "Cultural",
@@ -243,26 +243,26 @@ export default function PlannerView() {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                Estimated Budget (USD)
+                Estimated Budget (INR)
               </label>
               <span className="text-sm font-bold text-yellow-400 flex items-center">
-                <DollarSign className="w-4 h-4 shrink-0" />
+                <IndianRupee className="w-4 h-4 shrink-0" />
                 {budget.toLocaleString()}
               </span>
             </div>
             <input
               type="range"
-              min="500"
-              max="15000"
-              step="250"
+              min="10000"
+              max="500000"
+              step="5000"
               value={budget}
               onChange={(e) => setBudget(Number(e.target.value))}
               className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-yellow-400 focus:outline-none"
             />
             <div className="flex justify-between text-[10px] text-slate-500">
-              <span>$500</span>
-              <span>$7,500</span>
-              <span>$15,000+</span>
+              <span>₹10,000</span>
+              <span>₹2,50,000</span>
+              <span>₹5,00,000+</span>
             </div>
           </div>
 
