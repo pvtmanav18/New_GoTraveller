@@ -16,13 +16,18 @@ from backend.config.dotenv_loader import is_key_configured
 from pydantic import BaseModel
 
 from agents.planenr import generate_trip
-
+from backend.database.init_db import init_db
+from backend.agents.booking_agent import BookingAgent
 
 app = FastAPI(
     title="AI Travel Concierge - GoTraveller API",
     description="Backend API services for GoTraveller, including the Weather Agent.",
     version="1.0.0"
 )
+
+@app.on_event("startup")
+def on_startup():
+    init_db()
 
 # Configure CORS middleware
 app.add_middleware(
@@ -56,7 +61,7 @@ class TripRequest(BaseModel):
 
 @app.post("/plan-trip")
 async def plan_trip(data: TripRequest):
-
+    # Generate the personalized itinerary
     result = generate_trip(
         place=data.place,
         start_date=data.start_date,
@@ -67,9 +72,41 @@ async def plan_trip(data: TripRequest):
         trip_type="Sightseeing"
     )
 
+    # Get hotel options based on destination and budget
+    try:
+        booking_agent = BookingAgent()
+        hotels = booking_agent.get_hotel_options(
+            destination=data.place,
+            budget=str(data.budget),
+            preferences=", ".join(data.preferences)
+        )
+    except Exception as e:
+        print(f"Error fetching hotels in route: {e}")
+        hotels = []
+
     return {
-        "itinerary": result
+        "itinerary": result,
+        "hotels": hotels
     }
+
+class BookHotelRequest(BaseModel):
+    hotel_name: str
+    destination: str
+    price: str
+
+@app.post("/api/book-hotel")
+async def book_hotel(data: BookHotelRequest):
+    try:
+        booking_agent = BookingAgent()
+        success = booking_agent.book_hotel(
+            hotel_name=data.hotel_name,
+            destination=data.destination,
+            price=data.price
+        )
+        return {"success": success}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 
 if __name__ == "__main__":
     import uvicorn
