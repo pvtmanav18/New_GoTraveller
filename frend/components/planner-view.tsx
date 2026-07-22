@@ -2,11 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import LiveTripNavigation from "./live-view";
-import { Sparkles, Calendar, DollarSign, Users, Compass, AlertCircle } from "lucide-react";
+import { Sparkles, Calendar, DollarSign, Users, Compass, AlertCircle, Check, Star } from "lucide-react";
 
 export default function PlannerView() {
   // State variables for inputs
   const [destination, setDestination] = useState("Kyoto, Japan");
+  const [hotels, setHotels] = useState<any[]>([]);
+  const [bookingStatus, setBookingStatus] = useState<{[key: string]: 'idle' | 'booking' | 'booked'}>({});
   const [startDate, setStartDate] = useState("2026-10-15");
   const [endDate, setEndDate] = useState("2026-10-22");
   const [budget, setBudget] = useState(3500);
@@ -97,40 +99,72 @@ export default function PlannerView() {
   };
 
   const handleCreateJourney = async (
-  e: React.FormEvent
-) => {
-  e.preventDefault();
+    e: React.FormEvent
+  ) => {
+    e.preventDefault();
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
+      setTripResult("");
+      setHotels([]);
 
-    const response = await fetch(
-      "http://localhost:8000/plan-trip",
-      {
+      const response = await fetch(
+        "http://localhost:8000/plan-trip",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            place: destination,
+            start_date: startDate,
+            end_date: endDate,
+            budget: budget,
+            travelers: travelers,
+            preferences: selectedPrefs,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      setTripResult(data.itinerary);
+      setHotels(data.hotels || []);
+      setBookingStatus({});
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBookHotel = async (hotelName: string, price: string) => {
+    setBookingStatus((prev) => ({ ...prev, [hotelName]: "booking" }));
+    try {
+      const response = await fetch("http://localhost:8000/api/book-hotel", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          place: destination,
-          start_date: startDate,
-          end_date: endDate,
-          budget: budget,
-          travelers: travelers,
-          preferences: selectedPrefs,
+          hotel_name: hotelName,
+          destination: destination,
+          price: price,
         }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setBookingStatus((prev) => ({ ...prev, [hotelName]: "booked" }));
+      } else {
+        alert("Booking failed. Please try again.");
+        setBookingStatus((prev) => ({ ...prev, [hotelName]: "idle" }));
       }
-    );
-
-    const data = await response.json();
-
-    setTripResult(data.itinerary);
-  } catch (error) {
-    console.error(error);
-  } finally {
-    setLoading(false);
-  }
-};
+    } catch (error) {
+      console.error("Booking error:", error);
+      alert("Error connecting to booking agent.");
+      setBookingStatus((prev) => ({ ...prev, [hotelName]: "idle" }));
+    }
+  };
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
@@ -370,18 +404,108 @@ export default function PlannerView() {
 
 
 {tripResult && (
-  <div className="glass-panel p-6 rounded-2xl">
-    <h2 className="text-xl font-bold text-yellow-400 mb-4">
-      AI Generated Travel Plan
-    </h2>
+  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    {/* Itinerary Column */}
+    <div className="lg:col-span-2 glass-panel p-6 md:p-8 rounded-2xl space-y-6">
+      <h2 className="font-serif text-2xl font-bold text-yellow-400 mb-4">
+        Your Customized Travel Itinerary
+      </h2>
+      <pre className="whitespace-pre-wrap text-slate-300 text-xs md:text-sm font-sans leading-relaxed">
+        {tripResult}
+      </pre>
+      
+      {/* Live navigation section */}
+      <div className="pt-6 border-t border-slate-800">
+        <LiveTripNavigation />
+      </div>
+    </div>
 
-    <pre className="whitespace-pre-wrap text-slate-300 text-sm">
-      {tripResult}
-    </pre>
-    <LiveTripNavigation  />
+    {/* Booking Agent Hotel Options */}
+    <div className="space-y-6">
+      <div className="glass-panel p-6 rounded-2xl border-t-4 border-t-yellow-400 space-y-6">
+        <div className="flex items-center gap-2 pb-4 border-b border-slate-800/80">
+          <Sparkles className="w-5 h-5 text-yellow-400" />
+          <h3 className="font-serif text-lg font-bold text-slate-100">
+            Booking Agent Matches
+          </h3>
+        </div>
+
+        <div className="space-y-4">
+          {hotels.map((hotel, idx) => {
+            const status = bookingStatus[hotel.name] || 'idle';
+            return (
+              <div key={idx} className="bg-[#050810]/75 border border-slate-800 rounded-xl p-5 space-y-4">
+                <div className="flex justify-between items-start gap-2">
+                  <h4 className="text-base font-bold text-slate-50 max-w-[70%] leading-snug">{hotel.name}</h4>
+                  <span className="text-xs font-semibold text-yellow-400 bg-yellow-400/10 px-2.5 py-1 rounded border border-yellow-400/20 shrink-0">
+                    {hotel.price}
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                  <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                  <span>{hotel.rating}</span>
+                </div>
+                
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  {hotel.description}
+                </p>
+
+                {hotel.amenities && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {hotel.amenities.map((a: string, i: number) => (
+                      <span key={i} className="text-[10px] text-slate-400 bg-slate-900 border border-slate-800/80 px-2 py-0.5 rounded">
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="pt-2 flex gap-2">
+                  {hotel.booking_link && (
+                    <a
+                      href={hotel.booking_link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-center text-xs font-semibold text-slate-300 hover:text-slate-100 border border-slate-800 hover:border-slate-700 bg-slate-900/60 px-4 py-2.5 rounded-xl flex-1 transition-all"
+                    >
+                      Details
+                    </a>
+                  )}
+                  
+                  <button
+                    disabled={status === 'booking' || status === 'booked'}
+                    onClick={() => handleBookHotel(hotel.name, hotel.price)}
+                    className={`px-4 py-2.5 rounded-xl font-bold text-xs flex-1 flex items-center justify-center gap-1.5 transition-all ${
+                      status === 'booked' 
+                        ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' 
+                        : status === 'booking'
+                        ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/30 cursor-wait'
+                        : 'bg-yellow-400 hover:bg-yellow-500 text-slate-950 shadow-md shadow-yellow-400/5'
+                    }`}
+                  >
+                    {status === 'booked' ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Booked</span>
+                      </>
+                    ) : status === 'booking' ? (
+                      <span>Booking...</span>
+                    ) : (
+                      <span>Book Hotel</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+          {hotels.length === 0 && (
+            <p className="text-xs text-slate-500 text-center py-4">No hotel recommendations found for this budget.</p>
+          )}
+        </div>
+      </div>
+    </div>
   </div>
-  // {/* Live Navigation */}
-  // </>
 )}
     </div>
   );
