@@ -2,13 +2,31 @@
 
 import React from "react";
 import { Search, Compass, Bookmark, MapPin, Star, Clock, DollarSign } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface DashboardViewProps {
-  onPlanTrip: () => void;
-  onViewSaved: () => void;
+  onPlanTrip?: () => void;
+  onViewSaved?: () => void;
 }
 
 export default function DashboardView({ onPlanTrip, onViewSaved }: DashboardViewProps) {
+  const router = useRouter();
+
+  const handlePlanTrip = () => {
+    if (onPlanTrip) {
+      onPlanTrip();
+    } else {
+      router.push("/plan");
+    }
+  };
+
+  const handleViewSaved = () => {
+    if (onViewSaved) {
+      onViewSaved();
+    } else {
+      router.push("/saved");
+    }
+  };
   const recommendations = [
     {
       id: 1,
@@ -96,7 +114,7 @@ export default function DashboardView({ onPlanTrip, onViewSaved }: DashboardView
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left card: Plan Trip */}
         <button
-          onClick={onPlanTrip}
+          onClick={handlePlanTrip}
           className="group relative h-44 rounded-2xl bg-gradient-to-r from-blue-950 to-slate-950 border border-blue-900/40 p-6 flex flex-col justify-between text-left overflow-hidden transition-all duration-300 hover:border-blue-400/50 hover:shadow-xl hover:shadow-blue-500/5"
         >
           <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all duration-500" />
@@ -115,7 +133,7 @@ export default function DashboardView({ onPlanTrip, onViewSaved }: DashboardView
 
         {/* Right card: Saved Trips */}
         <button
-          onClick={onViewSaved}
+          onClick={handleViewSaved}
           className="group relative h-44 rounded-2xl bg-gradient-to-r from-amber-950 to-slate-950 border border-amber-900/40 p-6 flex flex-col justify-between text-left overflow-hidden transition-all duration-300 hover:border-amber-400/50 hover:shadow-xl hover:shadow-amber-500/5"
         >
           <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-all duration-500" />

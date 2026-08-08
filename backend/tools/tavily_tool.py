@@ -2,12 +2,27 @@ import os
 from tavily import TavilyClient
 from dotenv import load_dotenv
 
-load_dotenv()
-api_key=os.getenv("TAVILY_API_KEY")
+# Load env variables using robust absolute path
+backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+dotenv_path = os.path.join(backend_dir, ".env")
+if os.path.exists(dotenv_path):
+    load_dotenv(dotenv_path)
+else:
+    load_dotenv()
 
-client = TavilyClient(api_key=api_key)
+_client = None
+
+def get_tavily_client():
+    global _client
+    if _client is None:
+        api_key = os.getenv("TAVILY_API_KEY")
+        if not api_key:
+            raise ValueError("TAVILY_API_KEY environment variable is not configured.")
+        _client = TavilyClient(api_key=api_key)
+    return _client
 
 def tavily_search(query):
+    client = get_tavily_client()
     response = client.search(
         query=query,
         max_results=3

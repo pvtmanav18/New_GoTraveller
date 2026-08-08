@@ -105,6 +105,9 @@ class BookingAgent:
                     amenities = ["Free Wi-Fi", "Air Conditioning"]
 
                 booking_link = hotel.get("link", "https://google.com/travel/hotels")
+                gps = hotel.get("gps_coordinates", {})
+                latitude = gps.get("latitude")
+                longitude = gps.get("longitude")
 
                 structured_hotels.append({
                     "name": name,
@@ -112,7 +115,9 @@ class BookingAgent:
                     "rating": rating,
                     "description": description,
                     "amenities": amenities,
-                    "booking_link": booking_link
+                    "booking_link": booking_link,
+                    "latitude": latitude,
+                    "longitude": longitude
                 })
                 
             return structured_hotels
@@ -133,6 +138,20 @@ class BookingAgent:
         if nightly_budget < 2000:
             nightly_budget = 2000
         
+        # Geolocation fallbacks
+        lat, lng = 23.0225, 72.5714
+        dest_lower = destination.lower()
+        if "kyoto" in dest_lower:
+            lat, lng = 34.9858, 135.7588
+        elif "tokyo" in dest_lower:
+            lat, lng = 35.6762, 139.6503
+        elif "paris" in dest_lower:
+            lat, lng = 48.8566, 2.3522
+        elif "cairo" in dest_lower:
+            lat, lng = 30.0444, 31.2357
+        elif "oslo" in dest_lower:
+            lat, lng = 59.9139, 10.7522
+
         return [
             {
                 "name": f"Grand Oasis Resort {destination}",
@@ -140,7 +159,9 @@ class BookingAgent:
                 "rating": "4.6/5",
                 "description": "A luxury retreat in the heart of the city offering panoramic views and world-class service.",
                 "amenities": ["Free Wi-Fi", "Infinity Pool", "Fitness Center", "Spa"],
-                "booking_link": "https://www.booking.com"
+                "booking_link": "https://www.booking.com",
+                "latitude": lat + 0.002,
+                "longitude": lng - 0.001
             },
             {
                 "name": f"{destination} Boutique Inn",
@@ -148,7 +169,9 @@ class BookingAgent:
                 "rating": "4.4/5",
                 "description": "Cozy, charming, and walking distance to all major historical sights and local dining.",
                 "amenities": ["Free Breakfast", "Free Wi-Fi", "Air Conditioning", "Bicycle Rental"],
-                "booking_link": "https://www.booking.com"
+                "booking_link": "https://www.booking.com",
+                "latitude": lat - 0.001,
+                "longitude": lng + 0.003
             },
             {
                 "name": f"Eco-Lodge & Suites {destination}",
@@ -156,7 +179,9 @@ class BookingAgent:
                 "rating": "4.2/5",
                 "description": "Affordable sustainable lodging with modern facilities, perfect for environmentally conscious travelers.",
                 "amenities": ["Eco-friendly", "Free Wi-Fi", "Kitchenette", "Pet Friendly"],
-                "booking_link": "https://www.booking.com"
+                "booking_link": "https://www.booking.com",
+                "latitude": lat + 0.004,
+                "longitude": lng + 0.002
             }
         ]
 

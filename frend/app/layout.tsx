@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
+import Sidebar from "../components/sidebar";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -28,7 +29,15 @@ export default function RootLayout({
       className={`${inter.variable} ${playfair.variable} h-full antialiased dark`}
     >
       <body className="min-h-full flex flex-col bg-[#050814] text-slate-50 font-sans">
-        {children}
+        <div className="min-h-screen bg-[#050814] text-slate-100 flex relative overflow-hidden">
+          {/* Sidebar Navigation */}
+          <Sidebar />
+
+          {/* Main Content Area */}
+          <main className="flex-1 md:ml-64 ml-0 min-h-screen overflow-y-auto px-4 md:px-10 py-16 md:py-10 scrollbar-thin">
+            {children}
+          </main>
+        </div>
       </body>
     </html>
   );

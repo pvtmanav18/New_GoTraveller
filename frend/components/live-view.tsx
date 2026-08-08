@@ -300,7 +300,7 @@ export default function LiveView() {
   const watchId = useRef<number | null>(null);
   const initialized = useRef(false);
 
-  const [tracking, setTracking] = useState(null);
+  const [tracking, setTracking] = useState<boolean>(false);
 
   // ---------------- INIT MAP ----------------
   useEffect(() => {
