@@ -2,8 +2,16 @@
 
 import React from "react";
 import { Globe, Map, Compass, ShieldCheck, Award, Heart, Sparkles } from "lucide-react";
+import { useAuth } from "./auth-provider";
 
 export default function ProfileView() {
+  const { user } = useAuth();
+  const initials = user?.displayName 
+    ? user.displayName.split(" ").map(p => p[0]).join("").toUpperCase().substring(0, 2)
+    : user?.email 
+      ? user.email.substring(0, 2).toUpperCase() 
+      : "US";
+  const displayName = user?.displayName || user?.email?.split("@")[0] || "Guest User";
   const stats = [
     { label: "Countries Visited", value: "32", icon: Globe, color: "text-blue-400 bg-blue-500/10" },
     { label: "Cities Explored", value: "87", icon: Map, color: "text-emerald-400 bg-emerald-500/10" },
@@ -25,15 +33,15 @@ export default function ProfileView() {
         <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-400/5 rounded-full blur-3xl" />
         
         {/* Avatar Placeholder */}
-        <div className="w-24 h-24 rounded-full border-2 border-yellow-400 bg-slate-800 flex items-center justify-center font-serif text-3xl font-extrabold text-yellow-400 shadow-xl shadow-yellow-400/10 shrink-0">
-          RS
+        <div className="w-24 h-24 rounded-full border-2 border-yellow-400 bg-slate-800 flex items-center justify-center font-serif text-3xl font-extrabold text-yellow-400 shadow-xl shadow-yellow-400/10 shrink-0 select-none">
+          {initials}
         </div>
         
         {/* Details */}
         <div className="space-y-3 text-center md:text-left flex-1">
           <div className="flex flex-col md:flex-row md:items-center gap-3 justify-center md:justify-start">
             <h1 className="font-serif text-3xl text-slate-50 font-bold tracking-tight">
-              Rudra Suthar
+              {displayName}
             </h1>
             <span className="self-center md:self-auto px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-yellow-400/10 border border-yellow-400/30 text-yellow-400">
               Elite Voyager
@@ -81,7 +89,7 @@ export default function ProfileView() {
             Curious Luxury Explorer
           </h3>
           <p className="text-slate-400 text-xs md:text-sm leading-relaxed max-w-4xl">
-            Rudra Suthar prioritizes deep cultural immersion, culinary history, and luxury wellness retreats. 
+            {displayName} prioritizes deep cultural immersion, culinary history, and luxury wellness retreats. 
             He prefers blending high-end accommodations with experiential learning, such as archaeological expeditions 
             or organic farming masterclasses. Has a preference for off-the-beaten-path locations with high comfort indices, 
             moderate temperatures, and rich history.

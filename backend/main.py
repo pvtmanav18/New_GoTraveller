@@ -63,7 +63,7 @@ app.include_router(weather_router, prefix="/api")
 # LLM Setup
 # --------------------------------------------------
 llm = ChatGroq(
-    model="llama-3.3-70b-versatile"
+    model="openai/gpt-oss-120b"
 )
 
 # --------------------------------------------------
@@ -156,6 +156,23 @@ def itinerary_agent(state: TravelState):
 # --------------------------------------------------
 # Final Agent
 # --------------------------------------------------
+def is_valid_sightseeing_place(place: str) -> bool:
+    place_lower = place.lower()
+    invalid_keywords = [
+        "exclude", "hotel", "restaurant", "note:", "note ", "attention",
+        "example", "instruction", "visiting place", "opening", "closing", 
+        "budget", "tip", "itinerary", "overview", "duration", "hours",
+        "timing", "table", "address", "below", "following", "highlight", 
+        "guideline", "advisory", "booking", "recommendation"
+    ]
+    if any(kw in place_lower for kw in invalid_keywords):
+        return False
+    if len(place) > 120 or len(place) < 3:
+        return False
+    if not any(c.isalpha() for c in place):
+        return False
+    return True
+
 def final_agent(state: TravelState):
     prompt = f"""
         Generate a professional travel plan.
@@ -192,15 +209,27 @@ def final_agent(state: TravelState):
     places = []
     locations = []
 
+    # 1. Try table regex extraction (highly robust across models)
+    table_matches = re.findall(r"\|\s*\d+\s*\|\s*\*\*([^*]+)\*\*,\s*([^|]+)", data)
+    for name, addr in table_matches:
+        full_place = f"{name.strip()}, {addr.strip()}"
+        full_place = re.sub(r"[\*`_#]+", "", full_place).strip()
+        if full_place and is_valid_sightseeing_place(full_place) and full_place not in places:
+            places.append(full_place)
+
+    # 2. Section-based fallback (original logic)
     capture = False
     for line in data.splitlines():
         if "Visiting Places" in line:
             capture = True
             continue
+        if "Budget Breakdown" in line or "Travel Tips" in line:
+            capture = False
         if capture and line.strip():
             line = line.strip()
             place = re.sub(r"^(\d+[.)]\s*|[-*•]\s*)", "", line).strip()
-            if place:
+            place = re.sub(r"[\*`_#]+", "", place).strip()
+            if place and is_valid_sightseeing_place(place) and place not in places:
                 places.append(place)
 
     for place in places:
@@ -210,6 +239,27 @@ def final_agent(state: TravelState):
                 locations.append(geo)
         except Exception as e:
             print(f"Error geocoding place {place}: {e}")
+
+    # 3. Filter geographical outliers (e.g. mapping meta-text to a default location far from the cluster)
+    if locations:
+        import math
+        lats = sorted([loc["lat"] for loc in locations])
+        lons = sorted([loc["lng"] for loc in locations])
+        mid_idx = len(locations) // 2
+        median_lat = lats[mid_idx]
+        median_lon = lons[mid_idx]
+        
+        filtered_locations = []
+        for loc in locations:
+            lat_diff = loc["lat"] - median_lat
+            lon_diff = loc["lng"] - median_lon
+            dist_deg = math.sqrt(lat_diff**2 + lon_diff**2)
+            # Max 4.5 degrees (approx 500km) from the cluster center
+            if dist_deg <= 4.5:
+                filtered_locations.append(loc)
+            else:
+                print(f"⚠️ Filtered out geocoding outlier place '{loc['name']}' at [{loc['lat']}, {loc['lng']}] - too far from route cluster center [{median_lat}, {median_lon}]")
+        locations = filtered_locations
 
     route = {}
     if len(locations) >= 2:
@@ -262,11 +312,56 @@ class TripRequest(BaseModel):
     budget: int
     travelers: int
     preferences: list[str]
+    user_name: str = "Rudra Suthar"
+    user_email: str = "rudra@gotraveller.com"
 
 class BookHotelRequest(BaseModel):
     hotel_name: str
     destination: str
     price: str
+
+import json
+
+def save_trip_result_to_db(
+    place: str,
+    start_date: str,
+    end_date: str,
+    budget: str,
+    interests: str,
+    preferences: str,
+    trip_type: str,
+    final_response: str,
+    travelers: int,
+    user_name: str,
+    user_email: str
+):
+    try:
+        with psycopg.connect(DATABASE_URL) as db_conn:
+            with db_conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO travel_results
+                    (place, start_date, end_date, budget, interests, preferences, trip_type, result, user_name, user_email, travelers)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        place,
+                        start_date,
+                        end_date,
+                        budget,
+                        interests,
+                        preferences,
+                        trip_type,
+                        json.dumps({"travel_plan": final_response}),
+                        user_name,
+                        user_email,
+                        travelers
+                    )
+                )
+            db_conn.commit()
+            print(f"🎉 Saved trip to database for user '{user_name}' successfully.")
+    except Exception as e:
+        print(f"❌ Error saving trip result to database: {e}")
 
 # --------------------------------------------------
 # API Endpoints
@@ -374,6 +469,21 @@ async def plan_trip(data: TripRequest):
         print(f"Error fetching hotels in route: {e}")
         hotels = []
 
+    # Save dynamic trip details and generated itinerary to PostgreSQL
+    save_trip_result_to_db(
+        place=data.place,
+        start_date=data.start_date,
+        end_date=data.end_date,
+        budget=str(data.budget),
+        interests=", ".join(data.preferences),
+        preferences=", ".join(data.preferences),
+        trip_type="Sightseeing",
+        final_response=result["final_response"],
+        travelers=data.travelers,
+        user_name=data.user_name,
+        user_email=data.user_email
+    )
+
     return {
         "itinerary": result["final_response"],
         "hotels": hotels,
@@ -415,6 +525,21 @@ def generate_trip_endpoint(
             }
         }
     )
+    # Save dynamic trip details and generated itinerary to PostgreSQL
+    save_trip_result_to_db(
+        place=place,
+        start_date=start_date,
+        end_date=end_date,
+        budget=budget,
+        interests=interests,
+        preferences=preferences,
+        trip_type=trip_type,
+        final_response=result["final_response"],
+        travelers=1,
+        user_name="web_user",
+        user_email="web_user@gotraveller.com"
+    )
+
     return {
         "travel_plan": result["final_response"],
         "locations": result["locations"],
@@ -433,6 +558,40 @@ async def book_hotel(data: BookHotelRequest):
         return {"success": success}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+@app.get("/api/saved-trips")
+def get_saved_trips(user_name: str = "Rudra Suthar"):
+    """Fetches saved trip history from travel_results table for the user."""
+    try:
+        with psycopg.connect(DATABASE_URL) as db_conn:
+            with db_conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT id, place, start_date, end_date, budget, travelers, preferences, result, created_at
+                    FROM travel_results
+                    WHERE user_name = %s OR user_name IS NULL
+                    ORDER BY id DESC
+                    """,
+                    (user_name,)
+                )
+                rows = cur.fetchall()
+                trips = []
+                for row in rows:
+                    trips.append({
+                        "id": row[0],
+                        "destination": row[1],
+                        "start_date": row[2],
+                        "end_date": row[3],
+                        "budget": row[4],
+                        "travelers": row[5] or 1,
+                        "preferences": row[6],
+                        "itinerary": row[7].get("travel_plan") if row[7] else "",
+                        "created_at": row[8]
+                    })
+                return {"trips": trips}
+    except Exception as e:
+        print(f"❌ Error fetching saved trips: {e}")
+        return {"trips": []}
 
 if __name__ == "__main__":
     import uvicorn

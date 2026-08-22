@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Home, Compass, Bookmark, Navigation, User, Plane, Menu, X } from "lucide-react";
+import { Home, Compass, Bookmark, Navigation, User, Plane, Menu, X, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "./auth-provider";
 
 interface SidebarProps {
   activeTab?: string;
@@ -12,6 +13,7 @@ interface SidebarProps {
 
 export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   const pathname = usePathname();
+  const { user, logOut } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
 
   // Auto-close sidebar on mobile when pathname changes
@@ -126,14 +128,34 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
 
         {/* Footer / Account status */}
         <div className="p-4 border-t border-slate-800 bg-[#050810]/50">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-sm text-yellow-400">
-              RS
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3 overflow-hidden">
+              <div className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-sm text-yellow-400 shrink-0 select-none">
+                {user?.displayName 
+                  ? user.displayName.split(" ").map(p => p[0]).join("").toUpperCase().substring(0, 2)
+                  : user?.email 
+                    ? user.email.substring(0, 2).toUpperCase() 
+                    : "US"
+                }
+              </div>
+              <div className="overflow-hidden">
+                <div className="text-xs font-semibold text-slate-200 truncate max-w-[110px]">
+                  {user?.displayName || user?.email?.split("@")[0] || "User Session"}
+                </div>
+                <div className="text-[10px] text-yellow-400/90 font-medium">Elite Voyager</div>
+              </div>
             </div>
-            <div>
-              <div className="text-xs font-semibold text-slate-200">Rudra Suthar</div>
-              <div className="text-[10px] text-yellow-400/90 font-medium">Elite Voyager</div>
-            </div>
+            <button
+              onClick={() => {
+                if (window.confirm("Are you sure you want to sign out?")) {
+                  logOut();
+                }
+              }}
+              title="Sign Out"
+              className="p-1.5 rounded-lg border border-slate-850 bg-slate-900/60 text-slate-450 hover:text-red-400 hover:border-red-500/20 hover:bg-red-500/5 transition-all cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>

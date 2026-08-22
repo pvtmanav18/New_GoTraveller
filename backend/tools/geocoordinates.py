@@ -220,7 +220,6 @@ def place_search(query, lat, lon, radius=30000):
     url = "https://api.geoapify.com/v2/places"
 
     params = {
-        "categories": "tourism.sights,entertainment.museum",
         "filter": f"circle:{lon},{lat},{radius}",
         "limit": 50,
         "apiKey": API_KEY
@@ -270,7 +269,6 @@ def geo_coordinate(place):
     params = {
         "text": place,
         "limit": 25,
-        "categories": "entertainment.museum",
         "apiKey": API_KEY
     }
 
