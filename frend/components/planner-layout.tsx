@@ -26,12 +26,16 @@ import {
   User,
   Users,
   Star,
-  Check
+  Check,
+  FileDown
 } from "lucide-react";
 import DestinationSearch, { Destination, popularDestinations } from "./destination-search";
 import BudgetSlider from "./budget-slider";
 import TripTypeCards from "./trip-type-cards";
 import MapComponent from "./map";
+import { useAuth } from "./auth-provider";
+import MarkdownFormatter from "./markdown-formatter";
+import { exportItineraryToPDF } from "../lib/pdf-exporter";
 
 // Premium localized mock spots database supporting interactive modifications
 const initialSpotsData: Record<string, ActivitySpot[]> = {
@@ -197,6 +201,7 @@ export interface ActivitySpot {
 }
 
 export default function PlannerLayout() {
+  const { user } = useAuth();
   const [isMobile, setIsMobile] = useState(false);
 
   // Responsive design listener
@@ -509,7 +514,9 @@ export default function PlannerLayout() {
           end_date: endDate,
           budget: budget,
           travelers: travelersCount,
-          preferences: interests
+          preferences: interests,
+          user_name: user?.displayName || user?.email?.split("@")[0] || "Guest User",
+          user_email: user?.email || "guest@gotraveller.com"
         })
       });
 
@@ -1007,12 +1014,21 @@ export default function PlannerLayout() {
               <div className="space-y-6">
                 {/* 1. ITINERARY SECTION */}
                 <div className="bg-[#070b16]/75 border border-slate-800 rounded-xl p-5 space-y-4">
-                  <h4 className="font-serif text-base font-bold text-yellow-400 border-b border-slate-850 pb-2 flex items-center gap-2">
-                    <Compass className="w-4 h-4" />
-                    Trip Itinerary
-                  </h4>
-                  <div className="whitespace-pre-wrap text-xs md:text-sm text-slate-350 leading-relaxed font-sans select-text">
-                    {tripResult}
+                  <div className="flex justify-between items-center border-b border-slate-850 pb-2 mb-2">
+                    <h4 className="font-serif text-base font-bold text-yellow-400 flex items-center gap-2">
+                      <Compass className="w-4 h-4" />
+                      Trip Itinerary
+                    </h4>
+                    <button
+                      onClick={() => exportItineraryToPDF(destination.name, tripResult)}
+                      className="bg-yellow-400 hover:bg-yellow-500 text-slate-950 px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer select-none"
+                    >
+                      <FileDown className="w-3.5 h-3.5" />
+                      <span>Export PDF</span>
+                    </button>
+                  </div>
+                  <div className="max-w-full">
+                    <MarkdownFormatter content={tripResult} />
                   </div>
                 </div>
 

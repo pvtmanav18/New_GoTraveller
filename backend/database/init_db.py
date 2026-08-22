@@ -32,8 +32,16 @@ def init_db():
                         preferences TEXT,
                         trip_type VARCHAR(100),
                         result JSONB,
+                        user_name VARCHAR(255),
+                        user_email VARCHAR(255),
+                        travelers INT,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
+                """)
+                cur.execute("""
+                    ALTER TABLE travel_results ADD COLUMN IF NOT EXISTS user_name VARCHAR(255);
+                    ALTER TABLE travel_results ADD COLUMN IF NOT EXISTS user_email VARCHAR(255);
+                    ALTER TABLE travel_results ADD COLUMN IF NOT EXISTS travelers INT;
                 """)
                 print("✅ Table 'travel_results' is ready.")
 

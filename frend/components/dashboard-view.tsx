@@ -3,6 +3,7 @@
 import React from "react";
 import { Search, Compass, Bookmark, MapPin, Star, Clock, DollarSign } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "./auth-provider";
 
 interface DashboardViewProps {
   onPlanTrip?: () => void;
@@ -11,6 +12,7 @@ interface DashboardViewProps {
 
 export default function DashboardView({ onPlanTrip, onViewSaved }: DashboardViewProps) {
   const router = useRouter();
+  const { user } = useAuth();
 
   const handlePlanTrip = () => {
     if (onPlanTrip) {
@@ -83,12 +85,23 @@ export default function DashboardView({ onPlanTrip, onViewSaved }: DashboardView
     },
   ];
 
+  const getFirstName = () => {
+    if (user?.displayName) {
+      return user.displayName.split(" ")[0];
+    }
+    if (user?.email) {
+      const namePart = user.email.split("@")[0];
+      return namePart.charAt(0).toUpperCase() + namePart.slice(1);
+    }
+    return "Explorer";
+  };
+
   return (
     <div className="space-y-10 max-w-7xl mx-auto">
       {/* Header greeting */}
       <div>
         <h1 className="font-serif text-4xl md:text-5xl text-slate-50 font-bold tracking-tight mb-2">
-          Ready, Rudra?
+          Ready, {getFirstName()}?
         </h1>
         <p className="text-slate-400 text-sm md:text-base font-sans">
           Your AI Travel Concierge is primed. Let's design your next extraordinary escape.
